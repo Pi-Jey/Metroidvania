@@ -588,7 +588,6 @@ AnimatorState:
   - {fileID: -5544387525325507105}
   m_StateMachineBehaviours:
   - {fileID: -7962237773019683930}
-  - {fileID: -223662629472902775}
   m_Position: {x: 50, y: 50, z: 0}
   m_IKOnFeet: 0
   m_WriteDefaultValues: 1
@@ -691,8 +690,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6bddbe7cb6a305140b8c616bb9082a74, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  audioJump: {fileID: 8300000, guid: 6b4318e8c46fddf44b9ea7261b120b50, type: 3}
-  audioLand: {fileID: 8300000, guid: 5325a422cba6d1847970f9a58eae4cb7, type: 3}
 --- !u!1102 &2508532495062516819
 AnimatorState:
   serializedVersion: 6
@@ -707,7 +704,6 @@ AnimatorState:
   - {fileID: -1605831648228007278}
   m_StateMachineBehaviours:
   - {fileID: -480471806394875632}
-  - {fileID: 8538243328814435512}
   m_Position: {x: 50, y: 50, z: 0}
   m_IKOnFeet: 0
   m_WriteDefaultValues: 1
@@ -922,7 +918,6 @@ AnimatorState:
   - {fileID: -2990089715303078062}
   m_StateMachineBehaviours:
   - {fileID: -4995080996493077349}
-  - {fileID: -1141690816551523752}
   m_Position: {x: 50, y: 50, z: 0}
   m_IKOnFeet: 0
   m_WriteDefaultValues: 1
@@ -949,8 +944,7 @@ AnimatorState:
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: 1173355889305371878}
-  m_StateMachineBehaviours:
-  - {fileID: 9199013879751772783}
+  m_StateMachineBehaviours: []
   m_Position: {x: 50, y: 50, z: 0}
   m_IKOnFeet: 0
   m_WriteDefaultValues: 1
@@ -1005,7 +999,6 @@ AnimatorState:
   - {fileID: -2834103057509388721}
   m_StateMachineBehaviours:
   - {fileID: 2088859301714047399}
-  - {fileID: -1014697551801896358}
   m_Position: {x: 50, y: 50, z: 0}
   m_IKOnFeet: 0
   m_WriteDefaultValues: 1
