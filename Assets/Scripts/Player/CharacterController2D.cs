@@ -5,33 +5,33 @@ using UnityEngine.SceneManagement;
 
 public class CharacterController2D : MonoBehaviour
 {
-	[SerializeField] private float m_JumpForce = 400f;							// Amount of force added when the player jumps.
-	[Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;	// How much to smooth out the movement
-	[SerializeField] private bool m_AirControl = false;							// Whether or not a player can steer while jumping;
-	[SerializeField] private LayerMask m_WhatIsGround;							// A mask determining what is ground to the character
-	[SerializeField] private Transform m_GroundCheck;							// A position marking where to check if the player is grounded.
-	[SerializeField] private Transform m_WallCheck;								//Posicion que controla si el personaje toca una pared
+	[SerializeField] private float m_JumpForce = 400f;							
+	[Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;	
+	[SerializeField] private bool m_AirControl = false;							
+	[SerializeField] private LayerMask m_WhatIsGround;							
+	[SerializeField] private Transform m_GroundCheck;							
+	[SerializeField] private Transform m_WallCheck;								
 
-	const float k_GroundedRadius = .2f; // Radius of the overlap circle to determine if grounded
-	private bool m_Grounded;            // Whether or not the player is grounded.
+	const float k_GroundedRadius = .2f; 
+	private bool m_Grounded;            
 	private Rigidbody2D m_Rigidbody2D;
-	private bool m_FacingRight = true;  // For determining which way the player is currently facing.
+	private bool m_FacingRight = true;  
 	private Vector3 velocity = Vector3.zero;
-	private float limitFallSpeed = 25f; // Limit fall speed
+	private float limitFallSpeed = 25f; 
 
-	public bool canDoubleJump = true; //If player can double jump
+	public bool canDoubleJump = true; 
 	[SerializeField] private float m_DashForce = 25f;
 	private bool canDash = true;
-	private bool isDashing = false; //If player is dashing
-	private bool m_IsWall = false; //If there is a wall in front of the player
-	private bool isWallSliding = false; //If player is sliding in a wall
-	private bool oldWallSlidding = false; //If player is sliding in a wall in the previous frame
+	private bool isDashing = false; 
+	private bool m_IsWall = false; 
+	private bool isWallSliding = false; 
+	private bool oldWallSlidding = false; 
 	private float prevVelocityX = 0f;
-	private bool canCheck = false; //For check if player is wallsliding
+	private bool canCheck = false; 
 
-	public float life = 10f; //Life of the player
-	public bool invincible = false; //If player can die
-	private bool canMove = true; //If player can move
+	public float life = 10f; 
+	public bool invincible = false; 
+	private bool canMove = true; 
 
     private bool AbleToDJump = false;
     private bool AbleToDash = false;
@@ -39,8 +39,8 @@ public class CharacterController2D : MonoBehaviour
     private Animator animator;
 
 	private float jumpWallStartX = 0;
-	private float jumpWallDistX = 0; //Distance between player and wall
-	private bool limitVelOnWallJump = false; //For limit wall jump distance with low fps
+	private float jumpWallDistX = 0; 
+	private bool limitVelOnWallJump = false;
 
 	[Header("Events")]
 	[Space]
@@ -48,6 +48,8 @@ public class CharacterController2D : MonoBehaviour
 	public UnityEvent OnFallEvent;
 
 	public UnityEvent OnLandEvent;
+
+	public UnityEvent OnDeadEvent;
 
 	private void Awake()
 	{
@@ -138,41 +140,29 @@ public class CharacterController2D : MonoBehaviour
 		if (canMove) {
 			if (AbleToDash && dash && canDash && !isWallSliding)
 			{
-				//m_Rigidbody2D.AddForce(new Vector2(transform.localScale.x * m_DashForce, 0f));
 				StartCoroutine(DashCooldown());
 			}
-			// If crouching, check to see if the character can stand up
 			if (isDashing)
 			{
 				m_Rigidbody2D.velocity = new Vector2(transform.localScale.x * m_DashForce, 0);
 			}
-			//only control the player if grounded or airControl is turned on
 			else if (m_Grounded || m_AirControl)
 			{
 				if (m_Rigidbody2D.velocity.y < -limitFallSpeed)
 					m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, -limitFallSpeed);
-				// Move the character by finding the target velocity
 				Vector3 targetVelocity = new Vector2(move * 10f, m_Rigidbody2D.velocity.y);
-				// And then smoothing it out and applying it to the character
 				m_Rigidbody2D.velocity = Vector3.SmoothDamp(m_Rigidbody2D.velocity, targetVelocity, ref velocity, m_MovementSmoothing);
-
-				// If the input is moving the player right and the player is facing left...
 				if (move > 0 && !m_FacingRight && !isWallSliding)
 				{
-					// ... flip the player.
 					Flip();
 				}
-				// Otherwise if the input is moving the player left and the player is facing right...
 				else if (move < 0 && m_FacingRight && !isWallSliding)
 				{
-					// ... flip the player.
 					Flip();
 				}
 			}
-			// If the player should jump...
 			if (m_Grounded && jump)
 			{
-				// Add a vertical force to the player.
 				animator.SetBool("IsJumping", true);
 				animator.SetBool("JumpUp", true);
 				m_Grounded = false;
@@ -250,35 +240,31 @@ public class CharacterController2D : MonoBehaviour
 		}
 	}
 
-
 	private void Flip()
 	{
-		// Switch the way the player is labelled as facing.
 		m_FacingRight = !m_FacingRight;
 
-		// Multiply the player's x local scale by -1.
 		Vector3 theScale = transform.localScale;
 		theScale.x *= -1;
 		transform.localScale = theScale;
 	}
 
-	public void ApplyDamage(float damage, Vector3 position) 
+	public void GetDamage(float damage, Vector3 position) 
 	{
 		if (!invincible)
 		{
 			animator.SetBool("Hit", true);
 			life -= damage;
-			Vector2 damageDir = Vector3.Normalize(transform.position - position) * 40f ;
+			Vector2 damageDir = Vector3.Normalize(transform.position - position);
 			m_Rigidbody2D.velocity = Vector2.zero;
-			m_Rigidbody2D.AddForce(damageDir * 10);
+			m_Rigidbody2D.AddForce(damageDir * 400);
 			if (life <= 0)
 			{
-				StartCoroutine(WaitToDead());
+				StartCoroutine(PlayerDead());
 			}
 			else
 			{
-				StartCoroutine(Stun(0.25f));
-				StartCoroutine(MakeInvincible(1f));
+				StartCoroutine(DamageCooldown());
 			}
 		}
 	}
@@ -293,27 +279,17 @@ public class CharacterController2D : MonoBehaviour
 		yield return new WaitForSeconds(0.5f);
 		canDash = true;
 	}
-
-	IEnumerator Stun(float time) 
+	IEnumerator DamageCooldown()
 	{
 		canMove = false;
-		yield return new WaitForSeconds(time);
+        invincible = true;
+        yield return new WaitForSeconds(0.25f);
 		canMove = true;
-	}
-	IEnumerator MakeInvincible(float time) 
-	{
-		invincible = true;
-		yield return new WaitForSeconds(time);
-		invincible = false;
-	}
-	IEnumerator WaitToMove(float time)
-	{
-		canMove = false;
-		yield return new WaitForSeconds(time);
-		canMove = true;
-	}
+        yield return new WaitForSeconds(1f);
+        invincible = false;
+    }
 
-	IEnumerator WaitToCheck(float time)
+    IEnumerator WaitToCheck(float time)
 	{
 		canCheck = false;
 		yield return new WaitForSeconds(time);
@@ -330,13 +306,13 @@ public class CharacterController2D : MonoBehaviour
 		m_WallCheck.localPosition = new Vector3(Mathf.Abs(m_WallCheck.localPosition.x), m_WallCheck.localPosition.y, 0);
 	}
 
-	IEnumerator WaitToDead()
+	IEnumerator PlayerDead()
 	{
 		animator.SetBool("IsDead", true);
 		canMove = false;
 		invincible = true;
 		GetComponent<Attack>().enabled = false;
 		yield return new WaitForSeconds(0.5f);
-		SceneManager.LoadSceneAsync(SceneManager.GetActiveScene().buildIndex);
+		OnDeadEvent.Invoke();
 	}
 }

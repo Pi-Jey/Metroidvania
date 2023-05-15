@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
-public class Enemy : MonoBehaviour {
+public class SimpleEnemy : MonoBehaviour {
 
 	public float life = 10;
 	private bool isPlat;
@@ -18,18 +18,18 @@ public class Enemy : MonoBehaviour {
 	public bool isInvincible = false;
 	private bool isHitted = false;
 
-	void Awake () {
+	void Awake () 
+	{
 		fallCheck = transform.Find("FallCheck");
 		wallCheck = transform.Find("WallCheck");
 		rb = GetComponent<Rigidbody2D>();
 	}
 	
-	// Update is called once per frame
 	void FixedUpdate () {
 
 		if (life <= 0) {
 			transform.GetComponent<Animator>().SetBool("IsDead", true);
-			StartCoroutine(DestroyEnemy());
+			StartCoroutine(EnemyDead());
 		}
 
 		isPlat = Physics2D.OverlapCircle(fallCheck.position, .2f, 1 << LayerMask.NameToLayer("Default"));
@@ -55,17 +55,17 @@ public class Enemy : MonoBehaviour {
 		}
 	}
 
-	void Flip (){
-		// Switch the way the player is labelled as facing.
+	void Flip ()
+	{
 		facingRight = !facingRight;
-		
-		// Multiply the player's x local scale by -1.
+
 		Vector3 theScale = transform.localScale;
 		theScale.x *= -1;
 		transform.localScale = theScale;
 	}
 
-	public void ApplyDamage(float damage) {
+	public void GetDamage(float damage) 
+	{
 		if (!isInvincible) 
 		{
 			float direction = damage / Mathf.Abs(damage);
@@ -74,7 +74,7 @@ public class Enemy : MonoBehaviour {
 			life -= damage;
 			rb.velocity = Vector2.zero;
 			rb.AddForce(new Vector2(direction * 500f, 100f));
-			StartCoroutine(HitTime());
+			StartCoroutine(DamageCooldown());
 		}
 	}
 
@@ -82,11 +82,11 @@ public class Enemy : MonoBehaviour {
 	{
 		if (collision.gameObject.tag == "Player" && life > 0)
 		{
-			collision.gameObject.GetComponent<CharacterController2D>().ApplyDamage(2f, transform.position);
+			collision.gameObject.GetComponent<CharacterController2D>().GetDamage(2f, transform.position);
 		}
 	}
 
-	IEnumerator HitTime()
+	IEnumerator DamageCooldown()
 	{
 		isHitted = true;
 		isInvincible = true;
@@ -95,7 +95,7 @@ public class Enemy : MonoBehaviour {
 		isInvincible = false;
 	}
 
-	IEnumerator DestroyEnemy()
+	IEnumerator EnemyDead()
 	{
 		CapsuleCollider2D capsule = GetComponent<CapsuleCollider2D>();
 		capsule.size = new Vector2(1f, 0.25f);

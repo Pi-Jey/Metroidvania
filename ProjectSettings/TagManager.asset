@@ -5,14 +5,14 @@ TagManager:
   serializedVersion: 2
   tags:
   - Enemy
-  - AbilityToShoot
   - AbilityToDJump
   - AbilityToDash
+  - AbilityToShoot
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - Ground
   - Water
   - UI
   - 

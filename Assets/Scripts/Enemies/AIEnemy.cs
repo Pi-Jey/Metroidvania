@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class AI : MonoBehaviour
+public class AIEnemy : MonoBehaviour
 {
 	private Rigidbody2D m_Rigidbody2D;
-	private bool m_FacingRight = true;  // For determining which way the player is currently facing.
+	private bool m_FacingRight = true;
 
 	public float life = 10;
 
@@ -19,7 +19,7 @@ public class AI : MonoBehaviour
 	[SerializeField] private float m_DashForce = 25f;
 	private bool isDashing = false;
 
-	public GameObject enemy;
+	private GameObject enemy;
 	private float distToPlayer;
 	private float distToPlayerY;
 	public float meleeDist = 1.5f;
@@ -28,7 +28,7 @@ public class AI : MonoBehaviour
 	private Transform attackCheck;
 	public float dmgValue = 4;
 
-	public GameObject throwableObject;
+	public GameObject bullet;
 
 	private float randomDecision = 0;
 	private bool doOnceDecision = true;
@@ -38,115 +38,99 @@ public class AI : MonoBehaviour
 	void Awake()
 	{
 		m_Rigidbody2D = GetComponent<Rigidbody2D>();
-		attackCheck = transform.Find("AttackCheck").transform;
+        enemy = GameObject.Find("Player");
+        attackCheck = transform.Find("AttackCheck").transform;
 		anim = GetComponent<Animator>();
 	}
-
-	// Update is called once per frame
 	void FixedUpdate()
 	{
-
 		if (life <= 0)
 		{
-			StartCoroutine(SelfDestroy());
+			StartCoroutine(AIEnemyDead());
 		}
+        if (isDashing)
+        {
+            m_Rigidbody2D.velocity = new Vector2(transform.localScale.x * m_DashForce, 0);
+        }
+        else if (!isHitted)
+        {
+            distToPlayer = enemy.transform.position.x - transform.position.x;
+            distToPlayerY = enemy.transform.position.y - transform.position.y;
 
-		else if (enemy != null) 
+            if (Mathf.Abs(distToPlayer) < 0.25f)
+            {
+                GetComponent<Rigidbody2D>().velocity = new Vector2(0f, m_Rigidbody2D.velocity.y);
+                anim.SetBool("IsWaiting", true);
+            }
+            else if (Mathf.Abs(distToPlayer) > 0.25f && Mathf.Abs(distToPlayer) < meleeDist && Mathf.Abs(distToPlayerY) < 2f)
+            {
+                GetComponent<Rigidbody2D>().velocity = new Vector2(0f, m_Rigidbody2D.velocity.y);
+                if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f))
+                    Flip();
+                if (canAttack)
+                {
+                    MeleeAttack();
+                }
+            }
+            else if (Mathf.Abs(distToPlayer) > meleeDist && Mathf.Abs(distToPlayer) < rangeDist)
+            {
+                anim.SetBool("IsWaiting", false);
+                m_Rigidbody2D.velocity = new Vector2(distToPlayer / Mathf.Abs(distToPlayer) * speed, m_Rigidbody2D.velocity.y);
+            }
+            else
+            {
+                if (!endDecision)
+                {
+                    if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f))
+                        Flip();
+
+                    if (randomDecision < 0.4f)
+                        Run();
+                    else if (randomDecision >= 0.4f && randomDecision < 0.6f)
+                        Jump();
+                    else if (randomDecision >= 0.6f && randomDecision < 0.8f)
+                        StartCoroutine(Dash());
+                    else if (randomDecision >= 0.8f && randomDecision < 0.95f)
+                        RangeAttack();
+                    else
+                        Idle();
+                }
+                else
+                {
+                    endDecision = false;
+                }
+            }
+        }
+        else if (isHitted)
+        {
+            if ((distToPlayer > 0f && transform.localScale.x > 0f) || (distToPlayer < 0f && transform.localScale.x < 0f))
+            {
+                Flip();
+                StartCoroutine(Dash());
+            }
+            else
+                StartCoroutine(Dash());
+        }
+        if (transform.localScale.x * m_Rigidbody2D.velocity.x > 0 && !m_FacingRight && life > 0)
 		{
-			if (isDashing)
-			{
-				m_Rigidbody2D.velocity = new Vector2(transform.localScale.x * m_DashForce, 0);
-			}
-			else if (!isHitted)
-			{
-				distToPlayer = enemy.transform.position.x - transform.position.x;
-				distToPlayerY = enemy.transform.position.y - transform.position.y;
-
-				if (Mathf.Abs(distToPlayer) < 0.25f)
-				{
-					GetComponent<Rigidbody2D>().velocity = new Vector2(0f, m_Rigidbody2D.velocity.y);
-					anim.SetBool("IsWaiting", true);
-				}
-				else if (Mathf.Abs(distToPlayer) > 0.25f && Mathf.Abs(distToPlayer) < meleeDist && Mathf.Abs(distToPlayerY) < 2f)
-				{
-					GetComponent<Rigidbody2D>().velocity = new Vector2(0f, m_Rigidbody2D.velocity.y);
-					if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f)) 
-						Flip();
-					if (canAttack)
-					{
-						MeleeAttack();
-					}
-				}
-				else if (Mathf.Abs(distToPlayer) > meleeDist && Mathf.Abs(distToPlayer) < rangeDist)
-				{
-					anim.SetBool("IsWaiting", false);
-					m_Rigidbody2D.velocity = new Vector2(distToPlayer / Mathf.Abs(distToPlayer) * speed, m_Rigidbody2D.velocity.y);
-				}
-				else
-				{
-					if (!endDecision)
-					{
-						if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f)) 
-							Flip();
-
-						if (randomDecision < 0.4f)
-							Run();
-						else if (randomDecision >= 0.4f && randomDecision < 0.6f)
-							Jump();
-						else if (randomDecision >= 0.6f && randomDecision < 0.8f)
-							StartCoroutine(Dash());
-						else if (randomDecision >= 0.8f && randomDecision < 0.95f)
-							RangeAttack();
-						else
-							Idle();
-					}
-					else
-					{
-						endDecision = false;
-					}
-				}
-			}
-			else if (isHitted)
-			{
-				if ((distToPlayer > 0f && transform.localScale.x > 0f) || (distToPlayer < 0f && transform.localScale.x < 0f))
-				{
-					Flip();
-					StartCoroutine(Dash());
-				}
-				else
-					StartCoroutine(Dash());
-			}
-		}
-		else 
-		{
-			enemy = GameObject.Find("Player");
-		}
-
-		if (transform.localScale.x * m_Rigidbody2D.velocity.x > 0 && !m_FacingRight && life > 0)
-		{
-			// ... flip the player.
 			Flip();
 		}
-		// Otherwise if the input is moving the player left and the player is facing right...
 		else if (transform.localScale.x * m_Rigidbody2D.velocity.x < 0 && m_FacingRight && life > 0)
 		{
-			// ... flip the player.
 			Flip();
 		}
 	}
 
 	void Flip()
 	{
-		// Switch the way the player is labelled as facing.
 		facingRight = !facingRight;
 
-		// Multiply the player's x local scale by -1.
 		Vector3 theScale = transform.localScale;
 		theScale.x *= -1;
 		transform.localScale = theScale;
 	}
 
-	public void ApplyDamage(float damage)
+	public void GetDamage(float damage)
 	{
 		if (!isInvincible)
 		{
@@ -172,11 +156,11 @@ public class AI : MonoBehaviour
 				{
 					dmgValue = -dmgValue;
 				}
-				collidersEnemies[i].gameObject.SendMessage("ApplyDamage", dmgValue);
+				collidersEnemies[i].gameObject.SendMessage("GetDamage", dmgValue);
 			}
 			else if (collidersEnemies[i].gameObject.tag == "Player")
 			{
-				collidersEnemies[i].gameObject.GetComponent<CharacterController2D>().ApplyDamage(2f, transform.position);
+				collidersEnemies[i].gameObject.GetComponent<CharacterController2D>().GetDamage(2f, transform.position);
 			}
 		}
 		StartCoroutine(WaitToAttack(0.5f));
@@ -186,10 +170,11 @@ public class AI : MonoBehaviour
 	{
 		if (doOnceDecision)
 		{
-			GameObject throwableProj = Instantiate(throwableObject, transform.position + new Vector3(transform.localScale.x * 0.5f, -0.2f), Quaternion.identity) as GameObject;
-			throwableProj.GetComponent<ThrowableProjectile>().owner = gameObject;
-			Vector2 direction = new Vector2(transform.localScale.x, 0f);
-			throwableProj.GetComponent<ThrowableProjectile>().direction = direction;
+			GameObject _bullet = Instantiate(bullet, transform.position + new Vector3(transform.localScale.x * 0.5f, -0.2f), Quaternion.identity) as GameObject;
+			_bullet.GetComponent<Bullet>().owner = gameObject;
+            _bullet.GetComponent<Bullet>().target = "Player";
+            Vector2 direction = new Vector2(transform.localScale.x, 0f);
+			_bullet.GetComponent<Bullet>().direction = direction;
 			StartCoroutine(NextDecision(0.5f));
 		}
 	}
@@ -264,7 +249,7 @@ public class AI : MonoBehaviour
 		anim.SetBool("IsWaiting", false);
 	}
 
-	IEnumerator SelfDestroy()
+	IEnumerator AIEnemyDead()
 	{
 		CapsuleCollider2D capsule = GetComponent<CapsuleCollider2D>();
 		capsule.size = new Vector2(1f, 0.25f);
