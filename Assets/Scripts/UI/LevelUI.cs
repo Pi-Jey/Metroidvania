@@ -10,17 +10,29 @@ public class LevelUI : MonoBehaviour
     public GameObject Victory;
     public GameObject GameOver;
     public GameObject Hint;
+    public GameObject PCHint;
+    public GameObject PauseButton;
     private bool isAbleToPause = true;
     private bool isPaused = false;
+    private void Awake()
+    {
+        if (Application.platform == RuntimePlatform.Android)
+        {
+            PauseButton.SetActive(true);
+        }
+        else if(Application.platform == RuntimePlatform.WindowsPlayer)
+        {
+            PCHint.SetActive(true);
+        }
+    }
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Escape) && isAbleToPause)
+        if (Application.platform == RuntimePlatform.WindowsPlayer && Input.GetKeyDown(KeyCode.Escape) && isAbleToPause)
         {
             if (!isPaused)
             {
                 isPaused = true;
-                PauseMenu.SetActive(true);
-                Time.timeScale = 0;
+                OnPauseClick();
             }
             else
             {
@@ -29,8 +41,21 @@ public class LevelUI : MonoBehaviour
             }
         }
     }
+    public void OnPauseClick()
+    {
+        if (Application.platform == RuntimePlatform.WindowsPlayer)
+        {
+            Cursor.visible = true;
+        }
+        PauseMenu.SetActive(true);
+        Time.timeScale = 0;
+    }
     public void OnResumeClick()
     {
+        if (Application.platform == RuntimePlatform.WindowsPlayer)
+        {
+            Cursor.visible = false;
+        }
         PauseMenu.SetActive(false);
         Time.timeScale = 1;
     }
@@ -46,12 +71,20 @@ public class LevelUI : MonoBehaviour
     }
     public void OnFinishEnter() 
     {
+        if (Application.platform == RuntimePlatform.WindowsPlayer)
+        {
+            Cursor.visible = true;
+        }
         Victory.SetActive(true);
         Time.timeScale = 0;
         isAbleToPause = false;
     }
     public void OnGameOver()
     {
+        if (Application.platform == RuntimePlatform.WindowsPlayer)
+        {
+            Cursor.visible = true;
+        }
         GameOver.SetActive(true);
         Time.timeScale = 0;
         isAbleToPause = false;

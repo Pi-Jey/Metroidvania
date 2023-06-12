@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="CharacterController2D" Collapsed="true">
+    <Position X="6" Y="2.25" Width="1.5" />
+    <Compartments>
+      <Compartment Name="Fields" Collapsed="true" />
+      <Compartment Name="Methods" Collapsed="true" />
+    </Compartments>
+    <TypeIdentifier>
+      <HashCode>LQQUAOByIoigADAMgAACBAECACQggABKACVABCACQGA=</HashCode>
+      <FileName>Assets\Scripts\Player\CharacterController2D.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="UnityEngine.MonoBehaviour" Collapsed="true">
+    <Position X="6" Y="1" Width="1.5" />
+    <TypeIdentifier />
+  </Class>
+  <Class Name="Attack" Collapsed="true">
+    <Position X="7.75" Y="2" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>FAQEAAAAAoEAgAQEACAGACAAAAAAAAAAIBAAAQgAAAI=</HashCode>
+      <FileName>Assets\Scripts\Player\Attack.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CollectObjects" Collapsed="true">
+    <Position X="8.25" Y="3" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>EAAAAAAABAAAAAAAAAAAAAAIAEAAAAAAKAAAAAAAAEA=</HashCode>
+      <FileName>Assets\Scripts\Player\CollectObjects.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Move" Collapsed="true">
+    <Position X="10" Y="2.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>BAQCAAAAAiEAAYEAgAAAAAAAAAAAAQAABBAAIAAAABA=</HashCode>
+      <FileName>Assets\Scripts\Player\Move.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

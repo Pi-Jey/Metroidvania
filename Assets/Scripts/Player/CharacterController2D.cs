@@ -1,68 +1,65 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
-using System.Collections;
-using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class CharacterController2D : MonoBehaviour
 {
-	[SerializeField] private float m_JumpForce = 400f;							
-	[Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;	
-	[SerializeField] private bool m_AirControl = false;							
-	[SerializeField] private LayerMask m_WhatIsGround;							
-	[SerializeField] private Transform m_GroundCheck;							
-	[SerializeField] private Transform m_WallCheck;								
+    private Rigidbody2D rb;
+    [Range(0, 0.3f)] public float MovementSmoothing = 0.1f;
+    public bool AirControl = false;
+    const float CheckRadius = 0.2f;
+    private bool FacingRight = true;
+    private Vector3 velocity = Vector3.zero;
+    private bool canMove = true;
 
-	const float k_GroundedRadius = .2f; 
-	private bool m_Grounded;            
-	private Rigidbody2D m_Rigidbody2D;
-	private bool m_FacingRight = true;  
-	private Vector3 velocity = Vector3.zero;
-	private float limitFallSpeed = 25f; 
+    public Transform GroundCheck;
+    public LayerMask WhatIsGround;
+    private bool isGrounded;
 
-	public bool canDoubleJump = true; 
-	[SerializeField] private float m_DashForce = 25f;
-	private bool canDash = true;
-	private bool isDashing = false; 
-	private bool m_IsWall = false; 
-	private bool isWallSliding = false; 
-	private bool oldWallSlidding = false; 
-	private float prevVelocityX = 0f;
-	private bool canCheck = false; 
-
-	public float life = 10f; 
-	public bool invincible = false; 
-	private bool canMove = true; 
-
+    public float JumpForce = 900f;
     private bool AbleToDJump = false;
+    private bool canDoubleJump = true;
+    private readonly float FallSpeedLimit = 20f;
+
+    public GameObject DashButton;
     private bool AbleToDash = false;
+    public float DashForce = 25f;
+    private bool canDash = true;
+    private bool isDashing = false;
+
+    public Transform WallCheck;
+    private bool isOnWall = false;
+    private bool isWallSliding = false;
+    private bool isRecentWallSlidding = false;
+    private float WallJumpStart = 0;
+    private float WallJumpDist = 0;
+    private bool OnWallJumpVelocityLimit = false;
+    private bool canCheck = false;
+
+    public int currentlife = 3;
+    public Image[] LifeImage;
+    private bool canHitted = true;
 
     private Animator animator;
 
-	private float jumpWallStartX = 0;
-	private float jumpWallDistX = 0; 
-	private bool limitVelOnWallJump = false;
+    [Header("Events")]
+    [Space]
 
-	[Header("Events")]
-	[Space]
+    public UnityEvent OnFallEvent;
 
-	public UnityEvent OnFallEvent;
+    public UnityEvent OnLandEvent;
 
-	public UnityEvent OnLandEvent;
+    public UnityEvent OnDeadEvent;
 
-	public UnityEvent OnDeadEvent;
+    private void Awake()
+    {
+        rb = GetComponent<Rigidbody2D>();
+        animator = GetComponent<Animator>();
 
-	private void Awake()
-	{
-		m_Rigidbody2D = GetComponent<Rigidbody2D>();
-		animator = GetComponent<Animator>();
-
-		if (OnFallEvent == null)
-			OnFallEvent = new UnityEvent();
-
-		if (OnLandEvent == null)
-			OnLandEvent = new UnityEvent();
-	}
-
+        OnFallEvent ??= new UnityEvent();
+        OnLandEvent ??= new UnityEvent();
+    }
     public void GettingAbleToDJump()
     {
         AbleToDJump = true;
@@ -70,249 +67,263 @@ public class CharacterController2D : MonoBehaviour
     public void GettingAbleToDash()
     {
         AbleToDash = true;
+        if (Application.platform == RuntimePlatform.Android)
+        {
+            DashButton.SetActive(true);
+        }
+    }
+    private void Update()
+    {
+        for (int i = 0; i < LifeImage.Length; i++)
+        {
+            LifeImage[i].enabled = i < currentlife;
+        }
     }
     private void FixedUpdate()
-	{
-		bool wasGrounded = m_Grounded;
-		m_Grounded = false;
+    {
+        bool wasGrounded = isGrounded;
+        isGrounded = false;
 
-		Collider2D[] colliders = Physics2D.OverlapCircleAll(m_GroundCheck.position, k_GroundedRadius, m_WhatIsGround);
-		for (int i = 0; i < colliders.Length; i++)
-		{
-			if (colliders[i].gameObject != gameObject)
-				m_Grounded = true;
-				if (!wasGrounded )
-				{
-					OnLandEvent.Invoke();
-					canDoubleJump = true;
-					if (m_Rigidbody2D.velocity.y < 0f)
-						limitVelOnWallJump = false;
-				}
-		}
+        Collider2D[] colliders = Physics2D.OverlapCircleAll(GroundCheck.position, CheckRadius, WhatIsGround);
+        foreach (Collider2D collider in colliders)
+        {
+            if (collider.gameObject != gameObject)
+            {
+                isGrounded = true;
+            }
+            if (!wasGrounded)
+            {
+                OnLandEvent.Invoke();
+                canDoubleJump = true;
+                if (rb.velocity.y < 0f)
+                {
+                    OnWallJumpVelocityLimit = false;
+                }
+            }
+        }
 
-		m_IsWall = false;
+        isOnWall = false;
 
-		if (!m_Grounded)
-		{
-			OnFallEvent.Invoke();
-			Collider2D[] collidersWall = Physics2D.OverlapCircleAll(m_WallCheck.position, k_GroundedRadius, m_WhatIsGround);
-			for (int i = 0; i < collidersWall.Length; i++)
-			{
-				if (collidersWall[i].gameObject != null)
-				{
-					isDashing = false;
-					m_IsWall = true;
-				}
-			}
-			prevVelocityX = m_Rigidbody2D.velocity.x;
-		}
+        if (!isGrounded)
+        {
+            OnFallEvent.Invoke();
+            Collider2D[] collidersWall = Physics2D.OverlapCircleAll(WallCheck.position, CheckRadius, WhatIsGround);
+            foreach (Collider2D collider in collidersWall)
+            {
+                if (collider.gameObject != null)
+                {
+                    isDashing = false;
+                    isOnWall = true;
+                }
+            }
+        }
 
-		if (limitVelOnWallJump)
-		{
-			if (m_Rigidbody2D.velocity.y < -0.5f)
-				limitVelOnWallJump = false;
-			jumpWallDistX = (jumpWallStartX - transform.position.x) * transform.localScale.x;
-			if (jumpWallDistX < -0.5f && jumpWallDistX > -1f) 
-			{
-				canMove = true;
-			}
-			else if (jumpWallDistX < -1f && jumpWallDistX >= -2f) 
-			{
-				canMove = true;
-				m_Rigidbody2D.velocity = new Vector2(10f * transform.localScale.x, m_Rigidbody2D.velocity.y);
-			}
-			else if (jumpWallDistX < -2f) 
-			{
-				limitVelOnWallJump = false;
-				m_Rigidbody2D.velocity = new Vector2(0, m_Rigidbody2D.velocity.y);
-			}
-			else if (jumpWallDistX > 0) 
-			{
-				limitVelOnWallJump = false;
-				m_Rigidbody2D.velocity = new Vector2(0, m_Rigidbody2D.velocity.y);
-			}
-		}
-	}
-
-
-	public void Move(float move, bool jump, bool dash)
-	{
-		if (canMove) {
-			if (AbleToDash && dash && canDash && !isWallSliding)
-			{
-				StartCoroutine(DashCooldown());
-			}
-			if (isDashing)
-			{
-				m_Rigidbody2D.velocity = new Vector2(transform.localScale.x * m_DashForce, 0);
-			}
-			else if (m_Grounded || m_AirControl)
-			{
-				if (m_Rigidbody2D.velocity.y < -limitFallSpeed)
-					m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, -limitFallSpeed);
-				Vector3 targetVelocity = new Vector2(move * 10f, m_Rigidbody2D.velocity.y);
-				m_Rigidbody2D.velocity = Vector3.SmoothDamp(m_Rigidbody2D.velocity, targetVelocity, ref velocity, m_MovementSmoothing);
-				if (move > 0 && !m_FacingRight && !isWallSliding)
-				{
-					Flip();
-				}
-				else if (move < 0 && m_FacingRight && !isWallSliding)
-				{
-					Flip();
-				}
-			}
-			if (m_Grounded && jump)
-			{
-				animator.SetBool("IsJumping", true);
-				animator.SetBool("JumpUp", true);
-				m_Grounded = false;
-				m_Rigidbody2D.AddForce(new Vector2(0f, m_JumpForce));
-				canDoubleJump = true;
-				
-			}
-			else if (AbleToDJump && !m_Grounded && jump && canDoubleJump && !isWallSliding)
-			{
-				canDoubleJump = false;
-				m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, 0);
-				m_Rigidbody2D.AddForce(new Vector2(0f, m_JumpForce / 1.2f));
-				animator.SetBool("IsDoubleJumping", true);
-			}
-
-			else if (m_IsWall && !m_Grounded)
-			{
-				if (!oldWallSlidding && m_Rigidbody2D.velocity.y < 0 || isDashing)
-				{
-					isWallSliding = true;
-					m_WallCheck.localPosition = new Vector3(-m_WallCheck.localPosition.x, m_WallCheck.localPosition.y, 0);
-					Flip();
-					StartCoroutine(WaitToCheck(0.1f));
-					canDoubleJump = true;
-					animator.SetBool("IsWallSliding", true);
-				}
-				isDashing = false;
-
-				if (isWallSliding)
-				{
-					if (move * transform.localScale.x > 0.1f)
-					{
-						StartCoroutine(WaitToEndSliding());
-					}
-					else 
-					{
-						oldWallSlidding = true;
-						m_Rigidbody2D.velocity = new Vector2(-transform.localScale.x * 2, -5);
-					}
-				}
-
-				if (jump && isWallSliding)
-				{
-					animator.SetBool("IsJumping", true);
-					animator.SetBool("JumpUp", true); 
-					m_Rigidbody2D.velocity = new Vector2(0f, 0f);
-					m_Rigidbody2D.AddForce(new Vector2(transform.localScale.x * m_JumpForce *1.2f, m_JumpForce));
-					jumpWallStartX = transform.position.x;
-					limitVelOnWallJump = true;
-					canDoubleJump = true;
-					isWallSliding = false;
-					animator.SetBool("IsWallSliding", false);
-					oldWallSlidding = false;
-					m_WallCheck.localPosition = new Vector3(Mathf.Abs(m_WallCheck.localPosition.x), m_WallCheck.localPosition.y, 0);
-					canMove = false;
-				}
-				else if (dash && canDash)
-				{
-					isWallSliding = false;
-					animator.SetBool("IsWallSliding", false);
-					oldWallSlidding = false;
-					m_WallCheck.localPosition = new Vector3(Mathf.Abs(m_WallCheck.localPosition.x), m_WallCheck.localPosition.y, 0);
-					canDoubleJump = true;
-					StartCoroutine(DashCooldown());
-				}
-			}
-			else if (isWallSliding && !m_IsWall && canCheck) 
-			{
-				isWallSliding = false;
-				animator.SetBool("IsWallSliding", false);
-				oldWallSlidding = false;
-				m_WallCheck.localPosition = new Vector3(Mathf.Abs(m_WallCheck.localPosition.x), m_WallCheck.localPosition.y, 0);
-				canDoubleJump = true;
-			}
-		}
-	}
-
-	private void Flip()
-	{
-		m_FacingRight = !m_FacingRight;
-
-		Vector3 theScale = transform.localScale;
-		theScale.x *= -1;
-		transform.localScale = theScale;
-	}
-
-	public void GetDamage(float damage, Vector3 position) 
-	{
-		if (!invincible)
-		{
-			animator.SetBool("Hit", true);
-			life -= damage;
-			Vector2 damageDir = Vector3.Normalize(transform.position - position);
-			m_Rigidbody2D.velocity = Vector2.zero;
-			m_Rigidbody2D.AddForce(damageDir * 400);
-			if (life <= 0)
-			{
-				StartCoroutine(PlayerDead());
-			}
-			else
-			{
-				StartCoroutine(DamageCooldown());
-			}
-		}
-	}
-
-	IEnumerator DashCooldown()
-	{
-		animator.SetBool("IsDashing", true);
-		isDashing = true;
-		canDash = false;
-		yield return new WaitForSeconds(0.1f);
-		isDashing = false;
-		yield return new WaitForSeconds(0.5f);
-		canDash = true;
-	}
-	IEnumerator DamageCooldown()
-	{
-		canMove = false;
-        invincible = true;
-        yield return new WaitForSeconds(0.25f);
-		canMove = true;
-        yield return new WaitForSeconds(1f);
-        invincible = false;
+        if (OnWallJumpVelocityLimit)
+        {
+            if (rb.velocity.y < -0.5f)
+            {
+                OnWallJumpVelocityLimit = false;
+            }
+            WallJumpDist = (WallJumpStart - transform.position.x) * transform.localScale.x;
+            if (WallJumpDist < -0.5f && WallJumpDist > -1f)
+            {
+                canMove = true;
+            }
+            if (WallJumpDist < -1f && WallJumpDist >= -2f)
+            {
+                canMove = true;
+                rb.velocity = new Vector2(10f * transform.localScale.x, rb.velocity.y);
+            }
+            else if (WallJumpDist < -2f || WallJumpDist > 0)
+            {
+                OnWallJumpVelocityLimit = false;
+                rb.velocity = new Vector2(0, rb.velocity.y);
+            }
+        }
     }
 
-    IEnumerator WaitToCheck(float time)
-	{
-		canCheck = false;
-		yield return new WaitForSeconds(time);
-		canCheck = true;
-	}
 
-	IEnumerator WaitToEndSliding()
-	{
-		yield return new WaitForSeconds(0.1f);
-		canDoubleJump = true;
-		isWallSliding = false;
-		animator.SetBool("IsWallSliding", false);
-		oldWallSlidding = false;
-		m_WallCheck.localPosition = new Vector3(Mathf.Abs(m_WallCheck.localPosition.x), m_WallCheck.localPosition.y, 0);
-	}
+    public void Move(float move, bool jump, bool dash)
+    {
+        if (canMove)
+        {
+            if (AbleToDash && dash && canDash && !isWallSliding)
+            {
+                StartCoroutine(DashCooldown());
+            }
+            if (isDashing)
+            {
+                rb.velocity = new Vector2(transform.localScale.x * DashForce, 0);
+            }
+            else if (isGrounded || AirControl)
+            {
+                if (rb.velocity.y < -FallSpeedLimit)
+                {
+                    rb.velocity = new Vector2(rb.velocity.x, -FallSpeedLimit);
+                }
+                Vector3 targetVelocity = new Vector2(move * 10f, rb.velocity.y);
+                rb.velocity = Vector3.SmoothDamp(rb.velocity, targetVelocity, ref velocity, MovementSmoothing);
+                if (move > 0 && !FacingRight && !isWallSliding)
+                {
+                    Flip();
+                }
+                else if (move < 0 && FacingRight && !isWallSliding)
+                {
+                    Flip();
+                }
+            }
+            if (isGrounded && jump)
+            {
+                animator.SetBool("IsJumping", true);
+                animator.SetBool("JumpUp", true);
+                isGrounded = false;
+                rb.AddForce(new Vector2(0f, JumpForce));
+                canDoubleJump = true;
 
-	IEnumerator PlayerDead()
-	{
-		animator.SetBool("IsDead", true);
-		canMove = false;
-		invincible = true;
-		GetComponent<Attack>().enabled = false;
-		yield return new WaitForSeconds(0.5f);
-		OnDeadEvent.Invoke();
-	}
+            }
+            else if (AbleToDJump && !isGrounded && jump && canDoubleJump && !isWallSliding)
+            {
+                canDoubleJump = false;
+                rb.velocity = new Vector2(rb.velocity.x, 0);
+                rb.AddForce(new Vector2(0f, JumpForce / 1.2f));
+                animator.SetBool("IsDoubleJumping", true);
+            }
+
+            else if (isOnWall && !isGrounded)
+            {
+                if (!isRecentWallSlidding && rb.velocity.y < 0 || isDashing)
+                {
+                    isWallSliding = true;
+                    WallCheck.localPosition = new Vector3(-WallCheck.localPosition.x, WallCheck.localPosition.y, 0);
+                    Flip();
+                    StartCoroutine(WaitToCheck());
+                    canDoubleJump = true;
+                    animator.SetBool("IsWallSliding", true);
+                }
+                isDashing = false;
+
+                if (isWallSliding)
+                {
+                    if (move * transform.localScale.x > 0.1f)
+                    {
+                        StartCoroutine(WaitToEndSliding());
+                    }
+                    else
+                    {
+                        isRecentWallSlidding = true;
+                        rb.velocity = new Vector2(-transform.localScale.x * 2, -5);
+                    }
+                }
+
+                if (jump && isWallSliding)
+                {
+                    animator.SetBool("IsJumping", true);
+                    animator.SetBool("JumpUp", true);
+                    rb.velocity = new Vector2(0f, 0f);
+                    rb.AddForce(new Vector2(transform.localScale.x * JumpForce * 1.2f, JumpForce));
+                    WallJumpStart = transform.position.x;
+                    OnWallJumpVelocityLimit = true;
+                    canDoubleJump = true;
+                    isWallSliding = false;
+                    animator.SetBool("IsWallSliding", false);
+                    isRecentWallSlidding = false;
+                    WallCheck.localPosition = new Vector3(Mathf.Abs(WallCheck.localPosition.x), WallCheck.localPosition.y, 0);
+                    canMove = false;
+                }
+                else if (AbleToDash && dash && canDash)
+                {
+                    isWallSliding = false;
+                    animator.SetBool("IsWallSliding", false);
+                    isRecentWallSlidding = false;
+                    WallCheck.localPosition = new Vector3(Mathf.Abs(WallCheck.localPosition.x), WallCheck.localPosition.y, 0);
+                    canDoubleJump = true;
+                    StartCoroutine(DashCooldown());
+                }
+            }
+            else if (isWallSliding && !isOnWall && canCheck)
+            {
+                isWallSliding = false;
+                animator.SetBool("IsWallSliding", false);
+                isRecentWallSlidding = false;
+                WallCheck.localPosition = new Vector3(Mathf.Abs(WallCheck.localPosition.x), WallCheck.localPosition.y, 0);
+                canDoubleJump = true;
+            }
+        }
+    }
+
+    private void Flip()
+    {
+        FacingRight = !FacingRight;
+
+        Vector3 _scale = transform.localScale;
+        _scale.x *= -1;
+        transform.localScale = _scale;
+    }
+
+    public void GetDamage(int damage, Vector3 position)
+    {
+        if (canHitted)
+        {
+            animator.SetBool("Hit", true);
+            currentlife -= damage;
+            Vector2 direction = Vector3.Normalize(transform.position - position);
+            rb.velocity = Vector2.zero;
+            rb.AddForce(direction * 400);
+            if (currentlife <= 0)
+            {
+                StartCoroutine(PlayerDead());
+            }
+            else
+            {
+                StartCoroutine(DamageCooldown());
+            }
+        }
+    }
+
+    IEnumerator DashCooldown()
+    {
+        animator.SetBool("IsDashing", true);
+        isDashing = true;
+        canDash = false;
+        yield return new WaitForSeconds(0.1f);
+        isDashing = false;
+        yield return new WaitForSeconds(0.6f);
+        canDash = true;
+    }
+    IEnumerator DamageCooldown()
+    {
+        canMove = false;
+        canHitted = false;
+        yield return new WaitForSeconds(0.2f);
+        canMove = true;
+        yield return new WaitForSeconds(0.8f);
+        canHitted = true;
+    }
+
+    IEnumerator WaitToCheck()
+    {
+        canCheck = false;
+        yield return new WaitForSeconds(0.1f);
+        canCheck = true;
+    }
+
+    IEnumerator WaitToEndSliding()
+    {
+        yield return new WaitForSeconds(0.1f);
+        canDoubleJump = true;
+        isWallSliding = false;
+        animator.SetBool("IsWallSliding", false);
+        isRecentWallSlidding = false;
+        WallCheck.localPosition = new Vector3(Mathf.Abs(WallCheck.localPosition.x), WallCheck.localPosition.y, 0);
+    }
+
+    IEnumerator PlayerDead()
+    {
+        animator.SetBool("IsDead", true);
+        canMove = false;
+        canHitted = false;
+        GetComponent<Attack>().enabled = false;
+        yield return new WaitForSeconds(0.5f);
+        OnDeadEvent.Invoke();
+    }
 }
